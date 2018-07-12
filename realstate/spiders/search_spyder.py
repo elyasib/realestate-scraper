@@ -9,6 +9,7 @@ import sys
 class SearchSpyder(scrapy.Spider):
     name = 'search'
     start_urls = [
+        #'https://www.realestate.co.jp/rent/listing?prefecture=JP-13&city=minato&district=roppongi&min_price=180000&max_price=180000&min_meter=40&rooms=15&transaction_type=agency&pets=1'
         'https://www.realestate.co.jp/rent/listing?prefecture=JP-13&max_price=200000&min_meter=40&pets=1'
     ]
 
@@ -18,22 +19,22 @@ class SearchSpyder(scrapy.Spider):
         self.move_in_fees = []
         self.rents = []
         self.rents.append([
-                u'url',
-                u'Monthly Rent (MR)',
-                u'Move-In Fees (MIF)',
-                u'MIF - MR',
-                u'Deposit',
-                u'Key Money',
-                u'Agency Fee',
-                u'Guarantor Fee',
-                u'Lock Exchange Fee',
-                u'Fire Insurance',
-                u'Other',
-                u'Size',
-                u'Location',
-                u'Time to office',
-                u'Commute cost',
-                u'Directions'
+            u'url',
+            u'Monthly Rent (MR)',
+            u'Move-In Fees (MIF)',
+            u'MIF - MR',
+            u'Deposit',
+            u'Key Money',
+            u'Agency Fee',
+            u'Guarantor Fee',
+            u'Lock Exchange Fee',
+            u'Fire Insurance',
+            u'Other',
+            u'Size',
+            u'Location',
+            u'Time to office',
+            u'Commute cost',
+            u'Directions'
         ])
         self.arrive_at_9am_only_trains = u'data=!3m1!4b1!4m16!4m15!1m5!1m1!1s0x6018edbd99a623d5:0x2c93d677cfb8b16d!2m2!1d139.6369342!2d35.7268406!1m0!2m6!5e1!5e2!5e3!6e1!7e2!8j1531213200!3e3'
         self.arrive_at_9am = u'data=!4m6!4m5!2m3!6e1!7e2!8j1531213200!3e3'
@@ -50,6 +51,7 @@ class SearchSpyder(scrapy.Spider):
     def parse(self, response):
         if response.status == 200:
             try:
+                print('Responded with 200 list')
                 viewLinks = response.css("body.lang-en div#top.container div.row div.col-md-8 div.rej-property-list div.property-listing").xpath("//div[contains(@class, 'listing-body')]/div[contains(@class, 'listing-left-col')]/a/@href").extract()
                 dedupViewLinks = list(set(viewLinks))
 
@@ -74,6 +76,7 @@ class SearchSpyder(scrapy.Spider):
     def parse_view(self, response):
         if response.status == 200:
             try:
+                print('Responded with 200 view')
                 unitAtts = {}
                 unitAtts['url'] = response.url
 
@@ -92,7 +95,6 @@ class SearchSpyder(scrapy.Spider):
 
                 for index in range(len(feesNames)):
                     unitAtts[feesNames[index].encode('ascii', 'ignore').strip().encode('utf-8')] = feesValues[index].encode('ascii', 'ignore').strip().lstrip(u'\xa5').replace(',','').encode('utf-8')
-                    
 
                 # Directions
                 gmap = response.css('div.js-rej-map')
@@ -121,14 +123,16 @@ class SearchSpyder(scrapy.Spider):
                     'User-Agent': 'Scrapy/1.5.0 (+https://scrapy.org)'
                 })
 
-                yield scrapy.Request(RENDER_HTML_URL, callback=callbackFn, method="POST", body=body, headers=headers)
+                print("Calling maps. view={}, map={}".format(unitAtts['url'], directions))
+                yield scrapy.Request(RENDER_HTML_URL, callback=callbackFn, method="POST", body=body, headers=headers, dont_filter=True)
             except:
-                print("Unexpected error view:", sys.exc_info()[0])
+                print("Unexpected error view={}".format(sys.exc_info()))
                 raise
         else:
             print('Not ok request view:{}'.format(response.status))
 
     def parse_map(self, unitAtts):
+        print("Building callback={}".format(unitAtts['url']))
         def toTimedelta(item):
             result = self.matcher.match(item)
             hours = int(result.group(1) or '0')
@@ -138,6 +142,7 @@ class SearchSpyder(scrapy.Spider):
         def actually_parse_map(response):
             if response.status == 200:
                 try:
+                    print("Responded with 200 map. view={}, map={}".format(unitAtts['url'], unitAtts['directions']))
                     times = map(lambda time: toTimedelta(time), response.css('div.section-directions-trip-duration::text').extract())
                     times.sort()
                     unitAtts['commute_price'] = (response.css("div.section-listbox div.section-listbox span.section-directions-trip-secondary-text[jsan='7.section-directions-trip-secondary-text']::text").extract_first() or '').encode('utf-8')
