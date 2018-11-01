@@ -10,7 +10,8 @@ class SearchSpyder(scrapy.Spider):
     name = 'search'
     start_urls = [
         #'https://www.realestate.co.jp/rent/listing?prefecture=JP-13&city=minato&district=roppongi&min_price=180000&max_price=180000&min_meter=40&rooms=15&transaction_type=agency&pets=1'
-        'https://www.realestate.co.jp/rent/listing?prefecture=JP-13&max_price=200000&min_meter=40&pets=1'
+        #'https://www.realestate.co.jp/rent/listing?prefecture=JP-13&max_price=200000&min_meter=40&pets=1'
+        'https://www.realestate.co.jp/rent/listing?prefecture=JP-13&max_price=200000&min_meter=40&pets=1&furnished=1'
     ]
 
     def __init__(self, filename=None, **kwargs):
@@ -36,14 +37,16 @@ class SearchSpyder(scrapy.Spider):
             u'Commute cost',
             u'Directions'
         ])
-        self.arrive_at_9am_only_trains = u'data=!3m1!4b1!4m16!4m15!1m5!1m1!1s0x6018edbd99a623d5:0x2c93d677cfb8b16d!2m2!1d139.6369342!2d35.7268406!1m0!2m6!5e1!5e2!5e3!6e1!7e2!8j1531213200!3e3'
-        self.arrive_at_9am = u'data=!4m6!4m5!2m3!6e1!7e2!8j1531213200!3e3'
+        #self.arrive_at_9am_only_trains = u'data=!3m1!4b1!4m16!4m15!1m5!1m1!1s0x6018edbd99a623d5:0x2c93d677cfb8b16d!2m2!1d139.6369342!2d35.7268406!1m0!2m6!5e1!5e2!5e3!6e1!7e2!8j1531213200!3e3'
+        #self.arrive_at_9am = u'data=!4m6!4m5!2m3!6e1!7e2!8j1531213200!3e3'
+        self.arrive_at_9am = u'data=!3m1!4b1!4m13!4m12!1m0!1m5!1m1!1s0x60188b7c29a9f4f1:0x965ad50b4804a07f!2m2!1d139.7267289!2d35.667494!2m3!6e1!7e2!8j1543914000!3e3'
         self.total_move_in_fees = 0.0
         self.total_rent = 0.0
         self.count = 0
         #self.directions = u'https://www.google.com/maps/dir/?api=1&travelmode=transit&destination=35.6619147,139.7361128&origin='
         self.directions1 = u'https://www.google.com/maps/dir/'
-        self.directions2 = u'/35.6619147,139.7361128/@35.7008346,139.5592397,11z/' + self.arrive_at_9am
+        #self.directions2 = u'/35.6619147,139.7361128/@35.7008346,139.5592397,11z/' + self.arrive_at_9am
+        self.directions2 = u'/35.667498,139.726659/@35.7008346,139.5592397,11z/' + self.arrive_at_9am
         self.time_pattern = '(?:(\d+) h)?(?: )?(?:(\d+) m)?'
         self.matcher = re.compile(self.time_pattern)
 
@@ -97,7 +100,7 @@ class SearchSpyder(scrapy.Spider):
                     unitAtts[feesNames[index].encode('ascii', 'ignore').strip().encode('utf-8')] = feesValues[index].encode('ascii', 'ignore').strip().lstrip(u'\xa5').replace(',','').encode('utf-8')
 
                 # Directions
-                gmap = response.css('div.js-rej-map')
+                gmap = response.css('div.rej-map-container')
                 lat = gmap.css("::attr('data-lat')").extract_first()
                 lng = gmap.css("::attr('data-lng')").extract_first()
                 address = (gmap.css("::attr('data-address')").extract_first() or '').encode('utf-8')
@@ -106,6 +109,7 @@ class SearchSpyder(scrapy.Spider):
                 directions2 = self.directions2.encode('utf-8')
                 directions = u''
 
+                print("data lat={}, long={}".format(lat,lng))
                 if lat == '' or lng == '' or float(lat) == 0.0  or float(lng) == 0.0:
                     directions = directions1 + address + directions2
                 else:
